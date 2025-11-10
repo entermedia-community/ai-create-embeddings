@@ -35,7 +35,7 @@ def extract_multimodal_embeddings(text: str, image_path: str, device: str = None
     """
 
     device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-    logger.info("extract_multimodal_embeddings: device=%s, model_name=%s", device, model_name)
+    logger.info("extract_multimodal_embeddings: _HAS_QWEN3=%s device=%s, model_name=%s",_HAS_QWEN3, device, model_name)
 
     image = Image.open(image_path).convert("RGB")
     logger.debug("Opened image %s (size=%s)", image_path, image.size)
