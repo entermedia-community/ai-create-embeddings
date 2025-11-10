@@ -15,7 +15,7 @@ pip cache purge
 2. Ensure you have a local Qwen3V model file. The default path is:
 
 ```
-/models/unsloth_Qwen3-VL-8B-Instruct-GGUF_Qwen3-VL-8B-Instruct-Q4_K_M.gguf
+Qwen/Qwen3-VL-8B-Instruct
 ```
 
 3. Run tests with your local model:
@@ -90,7 +90,7 @@ The library works with local Qwen3V models:
 - Supports GGUF format (recommended for efficiency)
 - Compatible with .bin model files
 - Can load from model directories
-- Default path: `/models/unsloth_Qwen3-VL-8B-Instruct-GGUF_Qwen3-VL-8B-Instruct-Q4_K_M.gguf`
+- Default path: `Qwen/Qwen3-VL-8B-Instruct`
 
 ### Programming Interface
 

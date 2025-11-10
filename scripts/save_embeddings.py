@@ -43,7 +43,7 @@ def main():
         logger.exception('Failed to import Qwen3V classes from transformers')
         raise
 
-    model_path = args.model or '/models/unsloth_Qwen3-VL-8B-Instruct-GGUF_Qwen3-VL-8B-Instruct-Q4_K_M.gguf'
+    model_path = args.model or 'Qwen/Qwen3-VL-8B-Instruct'
     if not os.path.exists(model_path):
         logger.error('Model path does not exist: %s', model_path)
         raise SystemExit(1)

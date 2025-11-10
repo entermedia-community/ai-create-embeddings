@@ -19,7 +19,7 @@ except Exception as e:
     raise ImportError("Qwen3V support is required: install a transformers build that provides Qwen3V") from e
 
 # Default path can be overridden via model_name parameter
-DEFAULT_QWEN3_MODEL = "/models/unsloth_Qwen3-VL-8B-Instruct-GGUF_Qwen3-VL-8B-Instruct-Q4_K_M.gguf"
+DEFAULT_QWEN3_MODEL = "Qwen/Qwen3-VL-8B-Instruct"
 
 
 def extract_multimodal_embeddings(text: str, image_path: str, device: str = None, model_name: str = None) -> Dict[str, torch.Tensor]:
