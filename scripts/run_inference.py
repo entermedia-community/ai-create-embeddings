@@ -74,7 +74,7 @@ def main():
     model = Qwen3VLForConditionalGeneration.from_pretrained(model_path, dtype="auto", device_map="auto").to(device)
 
     # Move image embeddings to device
-    image_embeds = image_embeds.to(device)
+    # image_embeds = image_embeds.to(device)
     
     # Process text only
     text_inputs = processor(text=prompt_text, return_tensors='pt')

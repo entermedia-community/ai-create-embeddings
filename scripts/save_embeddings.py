@@ -74,7 +74,7 @@ def main():
     logger.info('Saving embeddings to: %s', args.output)
     torch.save({
         'text': args.text,
-        'image_embeds': image_embeds.cpu(),
+        'image_embeds': image_embeds
     }, args.output)
     logger.info('Done! Use run_inference.py with this file to generate outputs')
 
