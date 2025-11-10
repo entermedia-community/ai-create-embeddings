@@ -62,7 +62,7 @@ def main():
     image = Image.open(args.image) #.convert('RGB')
     
     # Get image embeddings
-    image_inputs = processor(images=[image], return_tensors='pt')
+    image_inputs = processor(images=[args.image], text=[args.text], return_tensors='pt')
     image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
     
     with torch.no_grad():
@@ -73,8 +73,7 @@ def main():
     # Save embeddings and text
     logger.info('Saving embeddings to: %s', args.output)
     torch.save({
-        'text': args.text,
-        'image_embeds': image_embeds.cpu(),  # Save to CPU for portability
+        'image_embeds': image_embeds
     }, args.output)
     logger.info('Done! Use run_inference.py with this file to generate outputs')
 
