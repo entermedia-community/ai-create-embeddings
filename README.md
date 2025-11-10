@@ -7,9 +7,7 @@ This repository contains a Python library for producing multimodal embeddings us
 1. Create a virtual environment and install requirements:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+python -m venv .venv;source .venv/bin/activate;pip install -r requirements.txt
 ```
 
 2. Ensure you have a local Qwen3V model file. The default path is:
@@ -93,6 +91,9 @@ multimodal = embeddings["multimodal"]   # Combined features
 ## Notes
 
 - Requires a local Qwen3V model file (GGUF format recommended)
+
+modelscope download --model ggml-org/Qwen3-VL-2B-Instruct-GGUF README.md --local_dir /models
+
 - Environment variable `TRANSFORMERS_CACHE` can be set to control model loading cache location
 - Model files are loaded in local-only mode with trusted code execution
 - Use the `--verbose` flag for detailed logging of model loading, processing steps, and embedding shapes
