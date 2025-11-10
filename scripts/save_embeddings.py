@@ -49,8 +49,8 @@ def main():
     #     raise SystemExit(1)
 
     logger.info('Loading processor and model from: %s', model_path)
-    processor = AutoProcessor.from_pretrained(model_path, trust_remote_code=True)
-    model = Qwen3VLForConditionalGeneration.from_pretrained(model_path, trust_remote_code=True).to(device)
+    processor = AutoProcessor.from_pretrained(model_path)
+    model = Qwen3VLForConditionalGeneration.from_pretrained(model_path, dtype="auto", device_map="auto").to(device)
 
     # Load and process image
     logger.info('Processing image: %s', args.image)

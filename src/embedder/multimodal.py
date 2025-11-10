@@ -43,8 +43,7 @@ def extract_multimodal_embeddings(text: str, image_path: str, device: str = None
     logger.debug("Opened image %s (size=%s)", image_path, image.size)
 
     # Use Qwen3V. Allow overriding model_name.
-    processor_cls = AutoProcessor
-    model_cls = Qwen3VLForConditionalGeneration
+
     model_path = model_name or DEFAULT_QWEN3_MODEL
     logger.info("Using Qwen3V model from path: %s", model_path)
 
@@ -52,15 +51,13 @@ def extract_multimodal_embeddings(text: str, image_path: str, device: str = None
     #     raise RuntimeError(f"Model path does not exist: {model_path}")
 
     logger.debug("Loading processor")
-    processor = processor_cls.from_pretrained(
-        model_path,
-        trust_remote_code=True
-    )
+    processor = AutoProcessor.from_pretrained(model_path)
     
     logger.debug("Loading model from path: %s", model_path)
-    model = model_cls.from_pretrained(
+    model = Qwen3VLForConditionalGeneration.from_pretrained(
         model_path,
-        trust_remote_code=True
+        dtype="auto", 
+        device_map="auto"
     ).to(device)
     logger.info("Model loaded from %s", model_path)
 
