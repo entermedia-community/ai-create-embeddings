@@ -73,7 +73,7 @@ def main():
     )
 
     image_embeds = data.get('image_embeds')
-    image_embeds = image_embeds.to(model.device).to(model.dtype)
+    # image_embeds = image_embeds.to(model.device).to(model.dtype)
 
     # Move image embeddings to device
     # image_embeds = image_embeds.to(device)
