@@ -54,14 +54,12 @@ def extract_multimodal_embeddings(text: str, image_path: str, device: str = None
     logger.debug("Loading processor")
     processor = processor_cls.from_pretrained(
         model_path,
-        local_files_only=True,
         trust_remote_code=True
     )
     
     logger.debug("Loading model from path: %s", model_path)
     model = model_cls.from_pretrained(
         model_path,
-        local_files_only=True,
         trust_remote_code=True
     ).to(device)
     logger.info("Model loaded from %s", model_path)
