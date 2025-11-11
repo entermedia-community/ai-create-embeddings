@@ -66,6 +66,8 @@ def main():
 
     image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
     
+    image_embeds = None
+
     with torch.no_grad():
         # Extract image features/embeddings
         image_embeds = model.get_image_features(**{k: v for k, v in image_inputs.items() if k != 'input_ids' and k != 'attention_mask'})
@@ -81,6 +83,11 @@ def main():
 
     print("Image inputs:", image_inputs)
     print("Keys:", image_inputs.keys())
+
+    print("Image embeds:", image_embeds)
+    print("Image embeds shape:", image_embeds.shape)
+    print("Image embeds dtype:", image_embeds.dtype)
+
 
 if __name__ == "__main__":
     main()
