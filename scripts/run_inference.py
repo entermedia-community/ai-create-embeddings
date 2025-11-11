@@ -38,17 +38,18 @@ def main():
         logger.error('Embeddings file not found: %s', args.embeddings)
         raise SystemExit(1)
 
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    device = "cuda" # args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
     logger.info('Running on device: %s', device)
 
     # Load embeddings file
-    logger.info('Loading embeddings from: %s', args.embeddings)
-    data = torch.load(args.embeddings, map_location='cpu')
+    data = torch.load(args.embeddings)
 
     text = data.get('text')
-    if not text:
-        logger.error('No text found in embeddings file')
-        raise SystemExit(1)
+
+    if args.prompt:
+        prompt_text = text + '\n' + args.prompt
+    else:
+        prompt_text = text
 
     # Import transformers here (fail early with clear message)
     try:
@@ -57,8 +58,11 @@ def main():
         logger.exception('Failed to import Qwen3V classes from transformers; ensure your venv has a transformers build with Qwen3V support')
         raise
 
-    # Use the model path from saved embeddings or the provided argument
-    model_path = args.model or data.get('model_path') or 'Qwen/Qwen3-VL-8B-Instruct'
+    model_path = args.model or 'Qwen/Qwen3-VL-8B-Instruct'
+
+    # if not os.path.exists(model_path):
+    #     logger.error('Model path does not exist: %s', model_path)
+    #     raise SystemExit(1)
 
     logger.info('Loading processor and model from: %s', model_path)
     processor = AutoProcessor.from_pretrained(model_path)
@@ -68,45 +72,31 @@ def main():
         device_map="auto"
     )
 
-    # Get the device from the model's first parameter (works with device_map="auto")
-    model_device = next(model.parameters()).device
-    model_dtype = next(model.parameters()).dtype
-    logger.info('Model loaded on device: %s with dtype: %s', model_device, model_dtype)
+    image_embeds = data.get('image_embeds')
+    # image_embeds = image_embeds.to(model.device).to(model.dtype)
 
-    # Load the saved embeddings
-    inputs_embeds = data.get('inputs_embeds')
-    if inputs_embeds is None:
-        logger.error('No inputs_embeds key found in %s', args.embeddings)
-        raise SystemExit(1)
+    # Move image embeddings to device
+    # image_embeds = image_embeds.to(device)
     
-    # Move embeddings to model's device and dtype
-    inputs_embeds = inputs_embeds.to(model_device).to(model_dtype)
-    logger.info('Loaded input embeddings with shape: %s', inputs_embeds.shape)
-    
-    # Prepare generation kwargs
-    gen_kwargs = {
-        'inputs_embeds': inputs_embeds,
-        'max_new_tokens': args.max_new_tokens,
-    }
-    
-    # Add optional components if they exist
-    if 'attention_mask' in data and data['attention_mask'] is not None:
-        gen_kwargs['attention_mask'] = data['attention_mask'].to(model_device)
-        logger.debug('Using saved attention_mask')
-    
-    if args.prompt:
-        logger.info('Additional prompt provided: %s', args.prompt)
-        logger.warning('Note: Adding extra prompt to pre-computed embeddings may not work as expected')
+    # Process text only
+    text_inputs = processor(text=prompt_text, return_tensors='pt')
+    text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
 
-    # Generate using the pre-computed embeddings
+    # text_embeds = model.get_text_features(text_inputs['input_ids'])
+    # inputs_embeds = torch.cat([text_embeds, image_embeds], dim=1)
+    # Generate
     logger.info('Generating with max_new_tokens=%d', args.max_new_tokens)
     with torch.no_grad():
         try:
-            # Use inputs_embeds for generation with pre-computed embeddings
-            gen = model.generate(**gen_kwargs)
-        except TypeError as e:
-            logger.error('Model.generate() raised TypeError: %s', e)
-            logger.error('This may indicate an incompatible transformers version. Ensure your transformers build supports Qwen3V.')
+            gen = model.generate(
+                # input_ids=text_inputs['input_ids'],
+                # attention_mask=text_inputs['attention_mask'],
+                inputs_embeds=image_embeds,
+                # attention_mask=torch.ones(image_embeds.shape[:2], device=model.device),
+                max_new_tokens=100
+            )
+        except TypeError:
+            logger.error('Model.generate() raised TypeError; this may indicate an incompatible transformers version. Ensure your transformers build supports Qwen3V.')
             raise
 
     # Decode
