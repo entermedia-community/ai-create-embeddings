@@ -12,7 +12,7 @@ import argparse
 import logging
 import os
 import torch
-# from PIL import Image
+from PIL import Image
 from transformers.image_utils import load_image
 
 
@@ -60,7 +60,7 @@ def main():
 
     # Load and process image
     logger.info('Processing image: %s', args.image)
-    image = load_image(args.image)
+    image = Image.open(args.image) #.convert('RGB')
     
     # Get image embeddings
     image_inputs = processor(images=image, return_tensors='pt')
@@ -75,10 +75,6 @@ def main():
         'image_embeds': image_features
     }, args.output)
     logger.info('Done! Use run_inference.py with this file to generate outputs')
-    
-    print("Image Inputs:", image_inputs)
-    print("Image Features:", image_features)
-
 
 
 if __name__ == "__main__":
