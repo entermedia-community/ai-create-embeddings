@@ -13,7 +13,6 @@ import logging
 import os
 import torch
 from PIL import Image
-from transformers.image_utils import load_image
 
 
 def main():
@@ -60,20 +59,81 @@ def main():
 
     # Load and process image
     logger.info('Processing image: %s', args.image)
-    image = Image.open(args.image) #.convert('RGB')
+    image = Image.open(args.image).convert('RGB')
     
-    # Get image embeddings
-    image_inputs = processor(images=image, return_tensors='pt')
-
-    with torch.inference_mode():
-        image_features = model.get_image_features(**image_inputs)
+    # Process inputs for the model
+    logger.info('Processing inputs with processor')
+    inputs = processor(images=image, text=args.text, return_tensors='pt')
+    inputs = {k: v.to(device) for k, v in inputs.items()}
+    
+    logger.debug('Input keys: %s', list(inputs.keys()))
+    
+    # Extract embeddings using the model's encoder
+    visual_emb = None
+    text_emb = None
+    
+    with torch.no_grad():
+        # Try to use get_image_features and get_text_features if available
+        if hasattr(model, 'get_image_features') and hasattr(model, 'get_text_features'):
+            try:
+                visual_emb = model.get_image_features(pixel_values=inputs.get('pixel_values'))
+                logger.info('Extracted visual embeddings via get_image_features: shape=%s', visual_emb.shape)
+            except Exception as e:
+                logger.warning('get_image_features failed: %s', e)
+                visual_emb = None
+            
+            try:
+                text_emb = model.get_text_features(input_ids=inputs.get('input_ids'))
+                logger.info('Extracted text embeddings via get_text_features: shape=%s', text_emb.shape)
+            except Exception as e:
+                logger.warning('get_text_features failed: %s', e)
+                text_emb = None
+        
+        # Fallback: use encoder directly
+        if visual_emb is None or text_emb is None:
+            logger.info('Using encoder fallback method')
+            try:
+                encoder = model.get_encoder()
+                encoder_output = encoder(**inputs)
+                
+                # Try to get image_embeds and text_embeds from encoder output
+                if visual_emb is None:
+                    visual_emb = getattr(encoder_output, 'image_embeds', None)
+                if text_emb is None:
+                    text_emb = getattr(encoder_output, 'text_embeds', None)
+                
+                # Last resort: use last_hidden_state with mean pooling
+                if visual_emb is None and hasattr(encoder_output, 'last_hidden_state'):
+                    visual_emb = encoder_output.last_hidden_state.mean(dim=1)
+                    logger.info('Using mean-pooled last_hidden_state for visual: shape=%s', visual_emb.shape)
+                if text_emb is None and hasattr(encoder_output, 'last_hidden_state'):
+                    text_emb = encoder_output.last_hidden_state.mean(dim=1)
+                    logger.info('Using mean-pooled last_hidden_state for text: shape=%s', text_emb.shape)
+                    
+            except Exception as e:
+                logger.exception('Encoder fallback failed')
+                raise RuntimeError('Unable to extract embeddings from model') from e
+        
+        if visual_emb is None or text_emb is None:
+            raise RuntimeError(f'Failed to extract embeddings: visual={visual_emb is not None}, text={text_emb is not None}')
+        
+        # Create multimodal embedding by concatenating visual and text
+        multimodal_emb = torch.cat([visual_emb, text_emb], dim=-1).squeeze()
+        logger.info('Created multimodal embedding: shape=%s', multimodal_emb.shape)
 
     # Save embeddings and text
     logger.info('Saving embeddings to: %s', args.output)
     torch.save({
+        'visual_embedding': visual_emb.cpu().squeeze(),
+        'text_embedding': text_emb.cpu().squeeze(),
+        'multimodal_embedding': multimodal_emb.cpu(),
+        'input_ids': inputs.get('input_ids', torch.tensor([])).cpu(),
         'text': args.text,
-        'image_embeds': image_features
+        'image_path': args.image,
     }, args.output)
+    
+    logger.info('Embedding shapes: visual=%s, text=%s, multimodal=%s',
+                visual_emb.shape, text_emb.shape, multimodal_emb.shape)
     logger.info('Done! Use run_inference.py with this file to generate outputs')
 
 
