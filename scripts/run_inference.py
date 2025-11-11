@@ -38,7 +38,7 @@ def main():
         logger.error('Embeddings file not found: %s', args.embeddings)
         raise SystemExit(1)
 
-    device = "cuda" # args.device or ('cuda' if torch.cuda.is_available() else 'cpu')
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
     logger.info('Running on device: %s', device)
 
     # Load embeddings file
@@ -73,27 +73,28 @@ def main():
     )
 
     image_embeds = data.get('image_embeds')
-    # image_embeds = image_embeds.to(model.device).to(model.dtype)
-
-    # Move image embeddings to device
-    # image_embeds = image_embeds.to(device)
+    
+    if image_embeds is None:
+        logger.error('No image_embeds key found in %s', args.embeddings)
+        raise SystemExit(1)
+    
+    # Move image embeddings to the model's device and dtype
+    image_embeds = image_embeds.to(model.device).to(model.dtype)
+    logger.info('Loaded image embeddings with shape: %s', image_embeds.shape)
     
     # Process text only
     text_inputs = processor(text=prompt_text, return_tensors='pt')
-    text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
+    text_inputs = {k: v.to(model.device) for k, v in text_inputs.items()}
 
-    # text_embeds = model.get_text_features(text_inputs['input_ids'])
-    # inputs_embeds = torch.cat([text_embeds, image_embeds], dim=1)
-    # Generate
+    # Generate using the pre-computed image embeddings
     logger.info('Generating with max_new_tokens=%d', args.max_new_tokens)
     with torch.no_grad():
         try:
+            # Use inputs_embeds for generation with pre-computed embeddings
             gen = model.generate(
-                # input_ids=text_inputs['input_ids'],
-                # attention_mask=text_inputs['attention_mask'],
+                **text_inputs,
                 inputs_embeds=image_embeds,
-                # attention_mask=torch.ones(image_embeds.shape[:2], device=model.device),
-                max_new_tokens=100
+                max_new_tokens=args.max_new_tokens
             )
         except TypeError:
             logger.error('Model.generate() raised TypeError; this may indicate an incompatible transformers version. Ensure your transformers build supports Qwen3V.')
