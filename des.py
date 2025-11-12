@@ -30,5 +30,12 @@ def generate_with_cached_features(prompt, visual_features):
 print(precomputed_features.keys())
 
 prompt = "Describe this image."
-output = generate_with_cached_features(prompt, precomputed_features['input_ids'])
-print(processor.decode(output[0], skip_special_tokens=True))
+# output = generate_with_cached_features(prompt, precomputed_features['input_ids'])
+outputs = model.generate(
+    inputs_embeds=precomputed_features,
+    max_new_tokens=100
+)
+print(outputs)
+print(type(outputs))
+
+print(processor.decode(outputs[0], skip_special_tokens=True))
