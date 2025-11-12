@@ -19,7 +19,7 @@ images, _ = process_vision_info(messages, image_patch_size=16)
 print(images)
 print(type(images))
 
-inputs = processor(text=text, images=images, return_tensors="pt")
+inputs = processor(images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
 print(inputs)
