@@ -9,7 +9,7 @@ Usage:
 
 Options:
   --prompt           The text prompt to send to the model (required)
-  --model            Model identifier (default: 'Qwen/Qwen3-VL-2B-Instruct')
+  --model            Model identifier (default: 'Qwen/Qwen3-VL-8B-Instruct')
   --max_new_tokens   Number of tokens to generate (default: 128)
   --device           Device to run on (cpu or cuda). Defaults to cuda if available.
 """
@@ -20,7 +20,7 @@ import torch
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Run a basic AI prompt on Qwen3-VL-2B-Instruct model'
+        description='Run a basic AI prompt on Qwen3-VL-8B-Instruct model'
     )
     parser.add_argument(
         '--prompt',
@@ -29,8 +29,8 @@ def main():
     )
     parser.add_argument(
         '--model',
-        default='Qwen/Qwen3-VL-2B-Instruct',
-        help='Model identifier (default: Qwen/Qwen3-VL-2B-Instruct)'
+        default='Qwen/Qwen3-VL-8B-Instruct',
+        help='Model identifier (default: Qwen/Qwen3-VL-8B-Instruct)'
     )
     parser.add_argument(
         '--max_new_tokens',
@@ -106,7 +106,12 @@ def main():
         with torch.no_grad():
             output_ids = model.generate(
                 **text_inputs,
-               # max_new_tokens=args.max_new_tokens,
+                do_sample=False,          # disable random sampling
+                num_beams=5,              # beam search
+                temperature=0.5,          # less randomness
+                max_new_tokens=100,
+                repetition_penalty=1.2
+                # max_new_tokens=args.max_new_tokens,
                 #do_sample=True,
                 #temperature=0.7,
                 #top_p=0.9
