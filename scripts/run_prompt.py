@@ -86,11 +86,24 @@ def main():
 
     logger.info('Model loaded successfully')
 
-    # Process the prompt
+    # Process the prompt using chat format
     logger.info('Processing prompt: %s', args.prompt)
     try:
+        # Create messages in chat format
+        messages = [
+            {"role": "user", "content": args.prompt}
+        ]
+        
+        # Apply chat template
+        text = processor.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        
+        # Process the formatted chat text
         text_inputs = processor(
-            text=args.prompt,
+            text=text,
             return_tensors='pt'
         )
         # Move inputs to the correct device
@@ -130,8 +143,10 @@ def main():
             tokenizer = getattr(model, 'tokenizer', None)
 
         if tokenizer is not None:
+            # Decode only the generated tokens (skip the input)
+            generated_ids = output_ids[0][text_inputs['input_ids'].shape[1]:]
             output_text = tokenizer.decode(
-                output_ids[0],
+                generated_ids,
                 skip_special_tokens=True
             )
         else:
