@@ -1,6 +1,5 @@
 import torch
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
-from transformers.feature_extraction_utils import BatchFeature
 
 # Load model and processor
 model_name = "Qwen/Qwen3-VL-8B-Instruct"
@@ -11,20 +10,28 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
     torch_dtype=torch.float16
 )
 
+# Load precomputed inputs (contains the processed image)
 precomputed_inputs = torch.load("inputs.pt", weights_only=False).to(model.device)
 
-# Option 1: Create a new prompt and reprocess with the same image
+# Option 2: Reuse image data but create new text prompt
 new_messages = [
     {"role": "user", "content": [
         {"type": "image", "image": "file:///workspace/ai-create-embeddings/fordcasepage3.png"}, 
-        {"type": "text", "text": "What objects are visible in this image?"}  # Modified prompt
+        {"type": "text", "text": "List all the text you can see in this image."}  # New prompt
     ]}
 ]
 
-from qwen_vl_utils import process_vision_info
+# Create new text prompt while reusing the pixel_values from precomputed_inputs
 new_text = processor.apply_chat_template(new_messages, tokenize=False, add_generation_prompt=True)
-images, _ = process_vision_info(new_messages, image_patch_size=16)
-modified_inputs = processor(text=new_text, images=images, return_tensors="pt").to(model.device)
+text_only_inputs = processor(text=new_text, return_tensors="pt").to(model.device)
+
+# Combine new text with original image data
+modified_inputs = {
+    "input_ids": text_only_inputs["input_ids"],
+    "attention_mask": text_only_inputs["attention_mask"],
+    "pixel_values": precomputed_inputs["pixel_values"],  # Reuse original image
+    "image_grid_thw": precomputed_inputs["image_grid_thw"]
+}
 
 output = model.generate(**modified_inputs)
 print(processor.batch_decode(output, skip_special_tokens=True))
