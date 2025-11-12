@@ -27,7 +27,8 @@ def generate_with_cached_features(prompt, visual_features):
     )
     return outputs
 
+print(precomputed_features.keys())
+
 prompt = "Describe this image."
 output = generate_with_cached_features(prompt, precomputed_features['input_ids'])
 print(processor.decode(output[0], skip_special_tokens=True))
-print(precomputed_features.keys())
