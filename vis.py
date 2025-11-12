@@ -22,21 +22,11 @@ print(type(images))
 inputs = processor(text=text, images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
+print(inputs)
+print(type(inputs))
+
 generated_ids = model.generate(**inputs)
 print(generated_ids)
+print(type(generated_ids))
 
-
-def extract_visual_features(image):
-    image = image.convert("RGB")
-    
-    # Process image (no text prompt needed)
-    inputs = processor(images=image, return_tensors="pt")
-    pixel_values = inputs["pixel_values"].to(model.device, dtype=torch.float16)
-    
-    # Forward through vision encoder only
-    with torch.no_grad():
-        visual_features = model.visual(pixel_values)
-        torch.save(visual_features.cpu(), "visual_features.pt")
-
-
-extract_visual_features(images[0])
+torch.save(inputs, "inputs.pt")
