@@ -9,6 +9,7 @@ Usage:
 
 Options:
   --prompt           The text prompt to send to the model (required)
+  --embeddings       Read in the embeddings from a .pt file saved by save_embeddings.py
   --model            Model identifier (default: 'Qwen/Qwen3-VL-8B-Instruct')
   --max_new_tokens   Number of tokens to generate (default: 128)
   --device           Device to run on (cpu or cuda). Defaults to cuda if available.
@@ -31,6 +32,10 @@ def main():
         '--model',
         default='Qwen/Qwen3-VL-8B-Instruct',
         help='Model identifier (default: Qwen/Qwen3-VL-8B-Instruct)'
+    )
+     parser.add_argument(
+        '--embeddings',
+        help='Read in the embeddings from a .pt file saved by save_embeddings.py'
     )
     parser.add_argument(
         '--max_new_tokens',
@@ -86,6 +91,20 @@ def main():
 
     logger.info('Model loaded successfully')
 
+    # Load embeddings if provided
+    image_embeds = None
+    if args.embeddings:
+        logger.info('Loading embeddings from: %s', args.embeddings)
+        try:
+            embeddings_data = torch.load(args.embeddings, map_location=device)
+            image_embeds = embeddings_data['image_embeds'].to(device)
+            saved_text = embeddings_data.get('text', '')
+            logger.info('Loaded embeddings with saved text: %s', saved_text)
+        except Exception as e:
+            logger.error('Failed to load embeddings file.')
+            logger.exception(e)
+            raise
+
     # Process the prompt using chat format
     logger.info('Processing prompt: %s', args.prompt)
     try:
@@ -122,10 +141,18 @@ def main():
 
     try:
         with torch.no_grad():
-            output_ids = model.generate(
+            # Prepare generate arguments
+            generate_kwargs = {
                 **text_inputs,
-                generation_config=gen_config
-            )
+                'generation_config': gen_config
+            }
+            
+            # Add image embeddings if available
+            if image_embeds is not None:
+                logger.info('Adding image embeddings to generation (shape: %s)', image_embeds.shape)
+                generate_kwargs['image_embeds'] = image_embeds
+            
+            output_ids = model.generate(**generate_kwargs)
     except Exception as e:
         logger.error('Failed during model.generate().')
         logger.exception(e)
