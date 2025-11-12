@@ -19,5 +19,3 @@ inputs = processor(text=text, images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
 torch.save(inputs, "inputs.pt")
-
-print(inputs.keys())

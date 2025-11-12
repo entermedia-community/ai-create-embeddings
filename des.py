@@ -14,4 +14,8 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
 precomputed_inputs = torch.load("inputs.pt", weights_only=False).to(model.device)
 
 output = model.generate(**precomputed_inputs)
-print(processor.batch_decode(output, skip_special_tokens=True))
+decoded_output = processor.batch_decode(output, skip_special_tokens=True)
+for i, text in enumerate(decoded_output):
+    print(f"Output {i}:")
+    print(text)
+    print("-" * 80)
