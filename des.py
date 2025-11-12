@@ -15,23 +15,18 @@ precomputed_features = torch.load("inputs.pt", weights_only=False).to(model.devi
 
 # Example: Inject features into the model’s processing
 def generate_with_cached_features(prompt, visual_features):
-    # Tokenize text prompt
-    text_inputs = processor(text=prompt, return_tensors="pt").to(model.device)
     
-    # Combine visual features and text tokens manually (this part depends on model internals)
-    # NOTE: This is pseudocode—actual implementation depends on Qwen-VL internals
+    text_inputs = processor(text=prompt, return_tensors="pt").to(model.device)
     inputs_embeds = model.get_input_embeddings()(text_inputs["input_ids"])
-    # Concatenate visual and text embeddings
-    combined_embeds = torch.cat([visual_features, inputs_embeds], dim=1)
 
-    # Generate
+    combined_embeds = torch.cat([processor.batch_decode(visual_features), inputs_embeds], dim=1)
+
     outputs = model.generate(
         inputs_embeds=combined_embeds,
         max_new_tokens=100
     )
     return outputs
 
-# Usage
 prompt = "Describe this image."
 output = generate_with_cached_features(prompt, precomputed_features)
 print(processor.decode(output[0], skip_special_tokens=True))
