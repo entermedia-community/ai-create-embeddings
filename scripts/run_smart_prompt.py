@@ -97,9 +97,23 @@ def main():
         logger.info('Loading embeddings from: %s', args.embeddings)
         try:
             embeddings_data = torch.load(args.embeddings, map_location=device)
-            image_embeds = embeddings_data['image_embeds'].to(device)
+            raw_embeds = embeddings_data['image_embeds']
+            
+            # Handle tuple or tensor
+            if isinstance(raw_embeds, tuple):
+                # If it's a tuple, take the first element (usually the embeddings)
+                image_embeds = raw_embeds[0]
+                logger.info('Extracted embeddings from tuple (length: %d)', len(raw_embeds))
+            else:
+                image_embeds = raw_embeds
+            
+            # Move to device if it's a tensor
+            if hasattr(image_embeds, 'to'):
+                image_embeds = image_embeds.to(device)
+            
             saved_text = embeddings_data.get('text', '')
             logger.info('Loaded embeddings with saved text: %s', saved_text)
+            logger.info('Embeddings shape: %s', image_embeds.shape if hasattr(image_embeds, 'shape') else type(image_embeds))
         except Exception as e:
             logger.error('Failed to load embeddings file.')
             logger.exception(e)
