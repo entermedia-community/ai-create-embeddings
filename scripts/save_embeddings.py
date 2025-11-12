@@ -61,23 +61,22 @@ def main():
     logger.info('Processing image: %s', args.image)
     image = Image.open(args.image) #.convert('RGB')
     
-    # Get image embeddings
+    # Get image inputs (pixel_values, etc.)
     image_inputs = processor(images=[args.image], text=[args.text], return_tensors='pt')
 
-    image_inputs = {k: v.to(device) for k, v in image_inputs.items()}
-
-    with torch.no_grad():
-        # Extract image features/embeddings
-        image_embeds = model.get_image_features(**{k: v for k, v in image_inputs.items() if k != 'input_ids' and k != 'attention_mask'})
-        #image_embeds = image_outputs.image_embeds
-
-    # Save embeddings and text
-    logger.info('Saving embeddings to: %s', args.output)
+    # Save the processed inputs (pixel_values, etc.) instead of embeddings
+    # This allows us to use them directly in generate()
+    logger.info('Saving processed image inputs to: %s', args.output)
+    
+    # Extract only the image-related keys (pixel_values, image_grid_thw, etc.)
+    image_data = {k: v for k, v in image_inputs.items() if k not in ['input_ids', 'attention_mask']}
+    
     torch.save({
         'text': args.text,
-        'image_embeds': image_embeds
+        'image_inputs': image_data  # Changed from image_embeds to image_inputs
     }, args.output)
-    logger.info('Done! Use run_inference.py with this file to generate outputs')
+    logger.info('Done! Saved keys: %s', list(image_data.keys()))
+    logger.info('Use run_smart_prompt.py with this file to generate outputs')
 
 if __name__ == "__main__":
     main()

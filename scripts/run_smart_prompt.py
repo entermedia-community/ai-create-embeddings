@@ -91,37 +91,34 @@ def main():
 
     logger.info('Model loaded successfully')
 
-    # Load embeddings if provided
-    image_embeds = None
+    # Load image inputs if provided
+    image_inputs = {}
     if args.embeddings:
-        logger.info('Loading embeddings from: %s', args.embeddings)
+        logger.info('Loading image inputs from: %s', args.embeddings)
         try:
             embeddings_data = torch.load(args.embeddings, map_location=device)
-            raw_embeds = embeddings_data['image_embeds']
             
-            # Handle tuple or tensor - recursively extract if needed
-            def extract_tensor(obj):
-                """Recursively extract the first tensor from nested tuples."""
-                if hasattr(obj, 'shape') and hasattr(obj, 'to'):
-                    # It's a tensor
-                    return obj
-                elif isinstance(obj, (tuple, list)) and len(obj) > 0:
-                    # It's a tuple/list, try first element
-                    return extract_tensor(obj[0])
-                else:
-                    return obj
+            # Try new format first (image_inputs), fall back to old format (image_embeds)
+            if 'image_inputs' in embeddings_data:
+                image_inputs = embeddings_data['image_inputs']
+                logger.info('Loaded image_inputs with keys: %s', list(image_inputs.keys()))
+            elif 'image_embeds' in embeddings_data:
+                # Old format - this won't work with generate() but log it
+                logger.warning('Old embeddings format detected. Please regenerate with save_embeddings.py')
+                logger.warning('The old format cannot be used directly with generate()')
+                image_inputs = {}
             
-            image_embeds = extract_tensor(raw_embeds)
-            
-            # Move to device if it's a tensor
-            if hasattr(image_embeds, 'to'):
-                image_embeds = image_embeds.to(device)
+            # Move all tensors to device
+            image_inputs = {k: v.to(device) if hasattr(v, 'to') else v 
+                           for k, v in image_inputs.items()}
             
             saved_text = embeddings_data.get('text', '')
-            logger.info('Loaded embeddings with saved text: %s', saved_text)
-            logger.info('Embeddings type: %s', type(image_embeds))
-            if hasattr(image_embeds, 'shape'):
-                logger.info('Embeddings shape: %s', image_embeds.shape)
+            logger.info('Loaded with saved text: %s', saved_text)
+            
+            # Log shapes
+            for k, v in image_inputs.items():
+                if hasattr(v, 'shape'):
+                    logger.info('  %s shape: %s', k, v.shape)
         except Exception as e:
             logger.error('Failed to load embeddings file.')
             logger.exception(e)
@@ -163,32 +160,15 @@ def main():
 
     try:
         with torch.no_grad():
-            # Prepare generate arguments
+            # Prepare generate arguments - merge text and image inputs
             generate_kwargs = {
                 **text_inputs,
+                **image_inputs,  # Add image inputs (pixel_values, etc.)
                 'generation_config': gen_config
             }
             
-            # Add image embeddings if available
-            if image_embeds is not None:
-                embed_shape = image_embeds.shape if hasattr(image_embeds, 'shape') else f'type: {type(image_embeds)}'
-                logger.info('Adding image embeddings to generation (shape: %s)', embed_shape)
-                
-                # If still a tuple, we need to handle it differently
-                if isinstance(image_embeds, tuple):
-                    logger.warning('image_embeds is still a tuple, attempting to extract tensor')
-                    # Try different tuple elements
-                    for i, elem in enumerate(image_embeds):
-                        logger.info('Tuple element %d: type=%s, shape=%s', i, type(elem), 
-                                   getattr(elem, 'shape', 'no shape'))
-                    # Use the first tensor we find
-                    for elem in image_embeds:
-                        if hasattr(elem, 'shape'):
-                            image_embeds = elem
-                            logger.info('Using tensor with shape: %s', image_embeds.shape)
-                            break
-                
-                generate_kwargs['image_embeds'] = image_embeds
+            if image_inputs:
+                logger.info('Generating with image inputs: %s', list(image_inputs.keys()))
             
             output_ids = model.generate(**generate_kwargs)
     except Exception as e:
