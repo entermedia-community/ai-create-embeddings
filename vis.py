@@ -15,8 +15,6 @@ text = processor.apply_chat_template(messages, tokenize=False, add_generation_pr
 
 images, _ = process_vision_info(messages, image_patch_size=16)
 
-print(images)
-
 inputs = processor(text=text, images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
