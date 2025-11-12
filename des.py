@@ -14,3 +14,5 @@ precomputed_inputs = torch.load("inputs.pt", weights_only=False).to(model.device
 
 output = model.generate(**precomputed_inputs)
 print(processor.batch_decode(output, skip_special_tokens=True))
+
+print(precomputed_inputs.keys())

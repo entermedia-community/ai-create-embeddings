@@ -14,20 +14,12 @@ processor = AutoProcessor.from_pretrained(model_name)
 model = Qwen3VLForConditionalGeneration.from_pretrained(model_name, dtype="auto", device_map="auto")
 
 text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-print(text)
-print(type(text))
 
 images, _ = process_vision_info(messages, image_patch_size=16)
-
-print(images)
-print(type(images))
 
 inputs = processor(text=text, images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
-print(inputs)
-print(type(inputs))
-
 torch.save(inputs, "inputs.pt")
-# output = model.generate(**inputs)
-# print(processor.batch_decode(output, skip_special_tokens=True))
+
+print(inputs.keys())
