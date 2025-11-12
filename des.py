@@ -19,7 +19,7 @@ print(type(text_inputs))
 
 combined = BatchFeature({
     k: torch.cat([precomputed_inputs[k], text_inputs[k]], dim=0)
-    for k in precomputed_inputs.keys()
+    for k in set(precomputed_inputs.keys()) & set(text_inputs.keys())
 })
 
 output = model.generate(combined)
