@@ -1,6 +1,6 @@
 import torch
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
-from transformers.tokenization_utils_base import BatchFeature
+from transformers.feature_extraction_utils import BatchFeature
 
 # Load model and processor
 model_name = "Qwen/Qwen3-VL-8B-Instruct"
