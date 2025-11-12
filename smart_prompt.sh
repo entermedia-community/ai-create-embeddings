@@ -1,5 +1,5 @@
   export PYTHONPATH="$(pwd)"
 
   python scripts/run_smart_prompt.py \
-    --embeddings out.pt \
+    --cache photo_cache.pt \
     --prompt "What is in the image?" 
