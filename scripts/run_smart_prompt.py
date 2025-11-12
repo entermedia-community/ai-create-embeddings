@@ -104,7 +104,15 @@ def main():
     if args.cache:
         logger.info('Loading cached model state from: %s', args.cache)
         try:
-            cache_data = torch.load(args.cache, map_location=device)
+            # PyTorch 2.6+ requires weights_only=False for custom classes
+            # or allowlisting specific classes
+            try:
+                from transformers.cache_utils import DynamicCache
+                torch.serialization.add_safe_globals([DynamicCache])
+                cache_data = torch.load(args.cache, map_location=device)
+            except (ImportError, AttributeError):
+                # Fallback for older transformers or if DynamicCache not available
+                cache_data = torch.load(args.cache, map_location=device, weights_only=False)
             
             past_key_values = cache_data.get('past_key_values')
             cached_input_ids = cache_data.get('input_ids')
