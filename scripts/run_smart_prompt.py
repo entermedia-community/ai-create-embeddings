@@ -161,7 +161,7 @@ def main():
     try:
         if past_key_values is not None:
             # We have cached state - just tokenize the new prompt
-            # Create a follow-up message
+            # Don't concatenate with cached tokens - the KV cache handles that
             messages = [
                 {"role": "user", "content": args.prompt}
             ]
@@ -173,20 +173,14 @@ def main():
             )
             
             # Tokenize just the new prompt
-            new_inputs = processor(
+            text_inputs = processor(
                 text=text,
                 return_tensors='pt'
             )
-            new_inputs = {k: v.to(device) for k, v in new_inputs.items()}
+            text_inputs = {k: v.to(device) for k, v in text_inputs.items()}
             
-            # Concatenate with cached inputs
-            text_inputs = {
-                'input_ids': torch.cat([cached_input_ids, new_inputs['input_ids']], dim=1),
-                'attention_mask': torch.cat([cached_attention_mask, new_inputs['attention_mask']], dim=1)
-            }
-            
-            logger.info('Using cached state + new prompt (%d cached + %d new tokens)',
-                       cached_input_ids.shape[1], new_inputs['input_ids'].shape[1])
+            logger.info('Using cached KV state with new prompt (%d cached tokens in KV cache, %d new tokens)',
+                       cached_input_ids.shape[1], text_inputs['input_ids'].shape[1])
         else:
             # No cache - process normally
             messages = [
