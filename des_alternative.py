@@ -11,6 +11,7 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
 )
 
 precomputed_inputs = torch.load("inputs-alt.pt", weights_only=False).to(model.device)
+precomputed_inputs = precomputed_inputs.unsqueeze(0)
 
 text_inputs = processor(text="What is this image about?", return_tensors="pt").to(model.device)
 
