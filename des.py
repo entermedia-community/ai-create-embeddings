@@ -11,7 +11,7 @@ model = Qwen3VLForConditionalGeneration.from_pretrained(
 )
 
 # Load precomputed visual features
-precomputed_features = torch.load("inputs.pt").to(model.device)
+precomputed_features = torch.load("inputs.pt", weights_only=False).to(model.device)
 
 # Example: Inject features into the model’s processing
 def generate_with_cached_features(prompt, visual_features):
