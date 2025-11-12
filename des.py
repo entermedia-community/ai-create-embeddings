@@ -16,7 +16,7 @@ text_inputs = processor(text="Extract the text from the image.", return_tensors=
 
 output = model.generate(
   input_ids=text_inputs.input_ids,
-  attention_mask=text_inputs.attention_mask,
+  attention_mask=precomputed_inputs.attention_mask,
   pixel_values=precomputed_inputs.pixel_values,
   image_grid_thw=precomputed_inputs.image_grid_thw
 )
