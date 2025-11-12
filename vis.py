@@ -14,12 +14,15 @@ processor = AutoProcessor.from_pretrained(model_name)
 model = Qwen3VLForConditionalGeneration.from_pretrained(model_name, dtype="auto", device_map="auto")
 
 text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+print(text)
+print(type(text))
+
 images, _ = process_vision_info(messages, image_patch_size=16)
 
 print(images)
 print(type(images))
 
-inputs = processor(images=images, return_tensors="pt")
+inputs = processor(text=text, images=images, return_tensors="pt")
 inputs = inputs.to(model.device)
 
 print(inputs)
