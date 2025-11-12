@@ -1,5 +1,6 @@
 import torch
 from transformers import Qwen3VLForConditionalGeneration, AutoProcessor
+from transformers.tokenization_utils_base import BatchFeature
 
 # Load model and processor
 model_name = "Qwen/Qwen3-VL-8B-Instruct"
@@ -16,7 +17,12 @@ text_inputs = processor(text="Extract the text from the image.", return_tensors=
 print(type(precomputed_inputs))
 print(type(text_inputs))
 
-output = model.generate(torch.cat((precomputed_inputs, text_inputs), dim=1))
+combined = BatchFeature({
+    k: torch.cat([precomputed_inputs[k], text_inputs[k]], dim=0)
+    for k in precomputed_inputs.keys()
+})
+
+output = model.generate(combined)
 print(processor.batch_decode(output, skip_special_tokens=True))
 
 print(precomputed_inputs.keys())
