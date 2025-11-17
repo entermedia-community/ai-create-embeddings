@@ -7,6 +7,7 @@ class DocumentMaker:
   """Creates Document objects with consistent metadata."""
   
   id: Required[str] = field(metadata={"description": "Unique identifier for the document"})
+  parent_id: Required[str] = field(metadata={"description": "Identifier for the parent document"})
   page_label: Optional[str] = None
   file_name: Optional[str] = None
   file_type: Optional[str] = None

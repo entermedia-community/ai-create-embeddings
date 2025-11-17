@@ -15,8 +15,6 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from qdrant_client import QdrantClient
-
-
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from document_maker import DocumentMaker
@@ -41,13 +39,13 @@ Settings.embed_model = HuggingFaceEmbedding(
 )
 
 client = QdrantClient(path="./qdrant_db")
-COLLECTION_NAME = "documents"
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):   
     global vector_store, index
 
-    vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
+    vector_store = QdrantVectorStore(client=client, collection_name="documents")
 
     try:
         index = VectorStoreIndex.from_vector_store(vector_store)
@@ -80,21 +78,6 @@ async def embed_document(data: CreateEmbeddingRequest):
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Document ID is required."}
         )
-
-    
-    existing = client.retrieve(
-        collection_name=COLLECTION_NAME,
-        ids=[id],
-    )
-    if existing:
-        # delete
-        print(f"Document with ID {id} already exists. Deleting existing document.")
-        print(existing)
-        client.delete(
-            collection_name=COLLECTION_NAME,
-            ids=[id],
-        )
-
     text = data.data
     if not text or text.strip() == "":
         return JSONResponse(

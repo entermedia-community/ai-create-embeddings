@@ -1,3 +1,4 @@
+from typing import List
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 from contextlib import asynccontextmanager
@@ -15,6 +16,8 @@ from llama_index.llms.openai_like import OpenAILike
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from qdrant_client import QdrantClient
+from qdrant_client.models import VectorParams, Distance
+
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
 from document_maker import DocumentMaker
@@ -39,13 +42,22 @@ Settings.embed_model = HuggingFaceEmbedding(
 )
 
 client = QdrantClient(path="./qdrant_db")
-
+COLLECTION_NAME = "documents"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):   
     global vector_store, index
 
-    vector_store = QdrantVectorStore(client=client, collection_name="documents")
+    if not client.collection_exists(collection_name=COLLECTION_NAME):
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(
+                size=768,
+                distance=Distance.COSINE,
+            )
+        )
+
+    vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
 
     try:
         index = VectorStoreIndex.from_vector_store(vector_store)
@@ -65,48 +77,77 @@ app = FastAPI(lifespan=lifespan)
 async def root():
     return {"message": "Running AI Embedding Service"}
 
+class CreateEmbeddingData(BaseModel):
+    page_id: str
+    text: str
+    page_label: str | None = None
+
 class CreateEmbeddingRequest(BaseModel):
-    id: str
-    data: str
-    metadata: dict | None = None
+    doc_id: str
+    file_name: str
+    file_type: str | None = None
+    creation_date: str | None = None
+    pages: List[CreateEmbeddingData]
 
 @app.post("/save")
-async def embed_document(data: CreateEmbeddingRequest):
-    id = data.id
-    if not id:
+async def embed_document(all_data: CreateEmbeddingRequest):
+    doc_id = all_data.doc_id
+    file_name = all_data.file_name
+    file_type = all_data.file_type
+    creation_date = all_data.creation_date
+
+    if not doc_id:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={"error": "Document ID is required."}
         )
-    text = data.data
-    if not text or text.strip() == "":
-        return JSONResponse(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            content={"error": "Data text is required."}
-        )
-    metadata = data.metadata or {}
+    
+    processed = set()
+    failed = set()
+    skipped = set()
+    print("Adding pages for document ID:", doc_id)
+    for data in all_data.pages:
+        page_id = data.page_id
+        if not page_id:
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"error": "Document ID is required."}
+            )
+        
+        page_label = data.page_label
 
-    doc_maker = DocumentMaker(
-        id=id,
-        page_label=metadata.get("page_label"),
-        file_name=metadata.get("file_name"),
-        file_type=metadata.get("file_type"),
-        creation_date=metadata.get("creation_date"),
+        text = data.text
+
+        if not text or text.strip() == "":
+            skipped.add(page_id)
+            continue
+
+        doc_maker = DocumentMaker(
+            id=page_id,
+            parent_id=doc_id,
+            page_label=page_label,
+            file_name=file_name,
+            file_type=file_type,
+            creation_date=creation_date,
+        )
+        try:
+            document = doc_maker.create_document(text)
+            index.insert(document)
+            processed.add(page_id)
+            print("Added page ID:", page_id)
+        except Exception as e:
+            failed.add(page_id)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={
+            "message": f"Document with ID {doc_id} embedded successfully.",
+            "processed": list(processed),
+            "skipped": list(skipped),
+            "failed": list(failed),
+        }
     )
-    try:
-        document = doc_maker.create_document(text)
-        index.insert(document)
-        return JSONResponse(
-            status_code=status.HTTP_201_CREATED,
-            content={"message": f"Document with ID {id} embedded successfully."}
-        )
-    except Exception as e:
-        return JSONResponse(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"error": str(e)}
-        )
-
-
+    
 class QueryDocsRequest(BaseModel):
     query: str
     doc_ids: list[str]
@@ -116,7 +157,7 @@ async def query_docs(data: QueryDocsRequest):
     try:
         filters = MetadataFilters(
             filters=[
-                MetadataFilter(key="id", operator=FilterOperator.IN, value=data.doc_ids)
+                MetadataFilter(key="parent_id", operator=FilterOperator.IN, value=data.doc_ids)
             ]
         )
 
