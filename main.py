@@ -1,3 +1,7 @@
+import os
+
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from typing import List
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
@@ -20,10 +24,7 @@ from qdrant_client.models import VectorParams, Distance
 
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
-from document_maker import DocumentMaker
-import os
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+from utils.document_maker import DocumentMaker
 
 llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
