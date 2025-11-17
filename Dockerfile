@@ -19,7 +19,7 @@ COPY README.md .
 COPY . .
 
 # Install dependencies using uv
-RUN uv pip install --no-cache --system .
+RUN uv sync
 
 EXPOSE 8080
 

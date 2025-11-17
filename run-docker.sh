@@ -1,1 +1,1 @@
-sudo docker run --name llama-index llama-index > /dev/null 2>&1
+sudo docker run -d --name llama-index -v qdrant_db:/app/qdrant_db llama-index
