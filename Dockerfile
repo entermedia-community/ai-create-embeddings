@@ -5,8 +5,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    libstdc++6 \
-    && rm -rf /var/lib/apt/lists/*
+    libstdc++6 
 
 WORKDIR /app
 
