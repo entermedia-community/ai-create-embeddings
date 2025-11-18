@@ -1,5 +1,5 @@
-# Use official Python 3.13 image
-FROM python:3.13-slim AS base
+FROM python:3.12-slim-trixie
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 # Install system dependencies for llama-cpp and others
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -7,9 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     libstdc++6 \
     && rm -rf /var/lib/apt/lists/*
-
-# Install uv (package manager)
-RUN pip install uv
 
 WORKDIR /app
 
@@ -19,7 +16,7 @@ COPY README.md .
 COPY . .
 
 # Install dependencies using uv
-RUN uv sync
+RUN uv sync --locked
 
 EXPOSE 8080
 
