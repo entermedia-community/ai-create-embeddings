@@ -16,7 +16,7 @@ COPY README.md .
 COPY . .
 
 # Install dependencies using uv
-RUN uv sync --freeze
+RUN uv sync
 
 EXPOSE 8080
 
