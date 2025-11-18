@@ -1,11 +1,11 @@
+from typing import Optional
 import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from typing import List
-from fastapi import FastAPI, status
+from fastapi import FastAPI, status, Header
 from fastapi.responses import JSONResponse
-from contextlib import asynccontextmanager
 
 from pydantic import BaseModel
 from llama_index.core import VectorStoreIndex, StorageContext, Settings
@@ -29,12 +29,8 @@ from utils.document_maker import DocumentMaker
 llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
 
-# Global variables
-vector_store = None
-index = None
-
 Settings.llm = OpenAILike(
-    api_base="http://142.113.71.170:36238/v1",
+    api_base="https://llama.thoughtframe.ai/v1",
     is_chat_model=True,
     is_function_calling_model=True
 )
@@ -42,15 +38,20 @@ Settings.embed_model = HuggingFaceEmbedding(
     model_name="BAAI/bge-base-en-v1.5"
 )
 
-client = QdrantClient(path="./qdrant_db")
+client = {}
+vector_store = {}
+index = {}
+
 COLLECTION_NAME = "documents"
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):   
-    global vector_store, index
+def get_index(customerkey: str):
+    if customerkey not in client:
+        print("Creating Qdrant client for customerkey:", customerkey)
+        client[customerkey] = QdrantClient(path="./db/"+customerkey)
+ 
 
-    if not client.collection_exists(collection_name=COLLECTION_NAME):
-        client.create_collection(
+    if not client[customerkey].collection_exists(collection_name=COLLECTION_NAME):
+        client[customerkey].create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
                 size=768,
@@ -58,21 +59,24 @@ async def lifespan(app: FastAPI):
             )
         )
 
-    vector_store = QdrantVectorStore(client=client, collection_name=COLLECTION_NAME)
+    if customerkey not in vector_store:
+        vector_store[customerkey] = QdrantVectorStore(client=client[customerkey], collection_name=COLLECTION_NAME)
 
-    try:
-        index = VectorStoreIndex.from_vector_store(vector_store)
-        print("Loaded existing index")
-    except:
-        print("Creating new index with storage_context")
-        storage_context = StorageContext.from_defaults(vector_store=vector_store)
-        index = VectorStoreIndex.from_documents(
-            [],
-            storage_context=storage_context 
-        )
-    yield
+    if customerkey not in index:
+        try:
+            index[customerkey] = VectorStoreIndex.from_vector_store(vector_store[customerkey])
+            print("Loaded existing index")
+        except:
+            print("Creating new index with storage_context")
+            storage_context = StorageContext.from_defaults(vector_store=vector_store[customerkey])
+            index[customerkey] = VectorStoreIndex.from_documents(
+                [],
+                storage_context=storage_context 
+            )
+    
+    return index[customerkey]
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 @app.get("/")
 async def root():
@@ -91,7 +95,18 @@ class CreateEmbeddingRequest(BaseModel):
     pages: List[CreateEmbeddingData]
 
 @app.post("/save")
-async def embed_document(all_data: CreateEmbeddingRequest):
+async def embed_document(
+    all_data: CreateEmbeddingRequest,
+    x_customerkey: Optional[str] = Header(None) #Send a x-customerkey header with the request
+):
+    if not x_customerkey:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid request."}
+        )
+    
+    index = get_index(x_customerkey)
+
     doc_id = all_data.doc_id
     file_name = all_data.file_name
     file_type = all_data.file_type
@@ -154,7 +169,18 @@ class QueryDocsRequest(BaseModel):
     doc_ids: list[str]
 
 @app.post("/query")
-async def query_docs(data: QueryDocsRequest):
+async def query_docs(
+    data: QueryDocsRequest,
+    x_customerkey: Optional[str] = Header(None) #Send a x-customerkey header with the request
+):
+    if not x_customerkey:
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={"error": "Invalid request."}
+        )
+    
+    index = get_index(x_customerkey)
+
     try:
         filters = MetadataFilters(
             filters=[
