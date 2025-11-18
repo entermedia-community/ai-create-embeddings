@@ -16,9 +16,9 @@ COPY README.md .
 COPY . .
 
 # Install dependencies using uv
-RUN uv sync
+RUN uv sync --frozen
 
 EXPOSE 8080
 
 # Run the FastAPI app with uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
