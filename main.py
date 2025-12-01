@@ -30,7 +30,7 @@ llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
 
 Settings.llm = OpenAILike(
-    api_base="http://172.17.0.2:8000/v1",
+    api_base="https://llama.thoughtframe.ai/v1",
     is_chat_model=True,
     is_function_calling_model=True
 )
