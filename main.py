@@ -3,7 +3,7 @@ import os
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
-from typing import List
+from typing import List, Optional
 from fastapi import FastAPI, status, Header
 from fastapi.responses import JSONResponse
 
@@ -30,12 +30,12 @@ llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
 
 Settings.llm = OpenAILike(
-    api_base="https://llama.thoughtframe.ai/v1",
+    api_base="https://llamat.emediaworkspace.com/",
     is_chat_model=True,
     is_function_calling_model=True
 )
 Settings.embed_model = HuggingFaceEmbedding(
-    model_name="BAAI/bge-base-en-v1.5"
+    model_name="BAAI/bge-m3"
 )
 
 client = {}
@@ -54,7 +54,7 @@ def get_index(customerkey: str):
         client[customerkey].create_collection(
             collection_name=COLLECTION_NAME,
             vectors_config=VectorParams(
-                size=768,
+                size=1024,
                 distance=Distance.COSINE,
             )
         )
@@ -207,6 +207,7 @@ async def query_docs(
             }
         )
     except Exception as e:
+        print("Error during query:", str(e))
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={"error": str(e)}
