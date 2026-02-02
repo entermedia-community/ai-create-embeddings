@@ -12,9 +12,8 @@ WORKDIR /app
 
 # Use a mounted volume for Hugging Face caches/models
 ENV HF_HOME=/models/hf \
-    HF_HUB_CACHE=/models/hf/hub \
-    TRANSFORMERS_CACHE=/models/hf/transformers
-RUN mkdir -p /models/hf/hub /models/hf/transformers
+    HF_HUB_CACHE=/models/hf/hub 
+RUN mkdir -p /models/hf/hub
 
 # Copy project files
 COPY pyproject.toml .
