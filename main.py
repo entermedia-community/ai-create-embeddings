@@ -83,6 +83,7 @@ async def embed_document(
     processed = set()
     failed = set()
     skipped = set()
+    node_ids = {}
     print("Adding pages for document ID:", doc_id)
     for data in all_data.pages:
         page_id = data.page_id
@@ -112,6 +113,13 @@ async def embed_document(
             document = doc_maker.create_document(text)
             index.insert(document)
             processed.add(page_id)
+            node_id = getattr(document, "id_", None)
+            if node_id is None and hasattr(document, "get_doc_id"):
+                node_id = document.get_doc_id()
+            if node_id is None and hasattr(document, "doc_id"):
+                node_id = document.doc_id
+            if node_id is not None:
+                node_ids[page_id] = node_id
             print("Added page ID:", page_id)
         except Exception as e:
             failed.add(page_id)
@@ -123,12 +131,13 @@ async def embed_document(
             "processed": list(processed),
             "skipped": list(skipped),
             "failed": list(failed),
+            "node_ids": node_ids,
         }
     )
     
 class QueryDocsRequest(BaseModel):
     query: str
-    doc_ids: list[str]
+    parent_ids: list[str]
 
 @app.post("/query")
 async def query_docs(
@@ -141,7 +150,7 @@ async def query_docs(
     try:
         filters = MetadataFilters(
             filters=[
-                MetadataFilter(key="parent_id", operator=FilterOperator.IN, value=data.doc_ids)
+                MetadataFilter(key="parent_id", operator=FilterOperator.IN, value=data.parent_ids)
             ]
         )
 
