@@ -28,7 +28,7 @@ class IndexRegistry:
         vector_store = MilvusVectorStore(
           collection_name=key,
           dim=self.dim,
-          uri="http://localhost:19530",
+          uri="http://38.247.147.151:19530",
           overwrite=True,
         )
         
