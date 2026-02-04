@@ -29,7 +29,7 @@ class IndexRegistry:
           collection_name=key,
           dim=self.dim,
           # uri="http://mediadb45.entermediadb.net:19530",
-          uri="mil.db",
+          uri="./mil.db",
           overwrite=True,
         )
         
