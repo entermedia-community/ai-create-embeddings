@@ -5,7 +5,8 @@ COLLECTION_NAME = "client_demo_embeddings"
 
 client = MilvusClient(uri=MILVUS_URI)
 res = client.query(
-  collection_name=COLLECTION_NAME
+  collection_name=COLLECTION_NAME,
+  limit=10,
 )
 
 print(res)
