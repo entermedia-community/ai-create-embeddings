@@ -1,5 +1,5 @@
 import random
-from typing import List
+from typing import Dict, List
 
 from pymilvus import Collection, DataType, connections, utility
 
@@ -11,11 +11,12 @@ def _connect() -> None:
 	connections.connect(alias="default", uri=MILVUS_URI)
 
 
-def _get_vector_field(collection: Collection) -> str:
-	for field in collection.schema.fields:
-		if field.dtype in (DataType.FLOAT_VECTOR, DataType.BINARY_VECTOR):
-			return field.name
-	raise ValueError("No vector field found in collection schema.")
+def _get_vector_fields(collection: Collection) -> List[str]:
+	return [
+		field.name
+		for field in collection.schema.fields
+		if field.dtype in (DataType.FLOAT_VECTOR, DataType.BINARY_VECTOR)
+	]
 
 
 def _get_vector_dim(collection: Collection, vector_field: str) -> int:
@@ -25,15 +26,29 @@ def _get_vector_dim(collection: Collection, vector_field: str) -> int:
 	raise ValueError("Vector field not found in collection schema.")
 
 
-def _get_output_fields(collection: Collection, vector_field: str) -> List[str]:
-	output_fields: List[str] = []
-	for field in collection.schema.fields:
-		if field.name == vector_field:
-			continue
-		if field.dtype in (DataType.FLOAT_VECTOR, DataType.BINARY_VECTOR):
-			continue
-		output_fields.append(field.name)
-	return output_fields
+def get_collection_stats() -> Dict[str, object]:
+	_connect()
+
+	if not utility.has_collection(COLLECTION_NAME):
+		raise ValueError(f"Collection '{COLLECTION_NAME}' does not exist.")
+
+	collection = Collection(COLLECTION_NAME)
+	collection.load()
+
+	vector_fields = _get_vector_fields(collection)
+	total_rows = collection.num_entities
+
+	vector_info = {
+		field: {"dim": _get_vector_dim(collection, field), "count": total_rows}
+		for field in vector_fields
+	}
+
+	return {
+		"collection": COLLECTION_NAME,
+		"total_rows": total_rows,
+		"vector_fields": vector_info,
+		"indexes": [index.to_dict() for index in collection.indexes],
+	}
 
 
 def quick_test_query(limit: int = 3) -> None:
@@ -45,9 +60,12 @@ def quick_test_query(limit: int = 3) -> None:
 	collection = Collection(COLLECTION_NAME)
 	collection.load()
 
-	vector_field = _get_vector_field(collection)
+	vector_fields = _get_vector_fields(collection)
+	if not vector_fields:
+		raise ValueError("No vector field found in collection schema.")
+
+	vector_field = vector_fields[0]
 	dim = _get_vector_dim(collection, vector_field)
-	output_fields = _get_output_fields(collection, vector_field)
 
 	query_vector = [random.random() for _ in range(dim)]
 
@@ -61,7 +79,6 @@ def quick_test_query(limit: int = 3) -> None:
 		anns_field=vector_field,
 		param=search_params,
 		limit=limit,
-		output_fields=output_fields,
 	)
 
 	print(f"Collection: {COLLECTION_NAME}")
@@ -71,11 +88,11 @@ def quick_test_query(limit: int = 3) -> None:
 		print("-" * 40)
 		print(f"ID: {hit.id}")
 		print(f"Score: {hit.score}")
-		if hit.entity is not None:
-			for field in output_fields:
-				if field in hit.entity:
-					print(f"{field}: {hit.entity[field]}")
 
 
 if __name__ == "__main__":
-	quick_test_query()
+	stats = get_collection_stats()
+	print("Collection stats:")
+	for key, value in stats.items():
+		print(f"{key}: {value}")
+
