@@ -32,7 +32,7 @@ llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
 
 Settings.llm = OpenAILike(
-    api_base="https://llamat.emediaworkspace.com/",
+    api_base="https://llm.emediaworkspace.com/",
     is_chat_model=True,
     is_function_calling_model=True
 )
