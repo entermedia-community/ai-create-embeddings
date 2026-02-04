@@ -1,9 +1,15 @@
 from threading import Lock
 from cachetools import LRUCache
-from llama_index.vector_stores.milvus import MilvusVectorStore
-from llama_index.core import Settings, VectorStoreIndex
 
+from llama_index.core import Settings, VectorStoreIndex
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+
+
 
 Settings.embed_model = HuggingFaceEmbedding(
   model_name="BAAI/bge-m3"
@@ -24,13 +30,20 @@ class IndexRegistry:
     key = collection_name
 
     with self._lock:
+      if not client.collection_exists(collection_name=collection_name):
+        client.create_collection(
+          collection_name=collection_name,
+          vectors_config=VectorParams(
+            size=self.dim,
+            distance=Distance.COSINE
+          )
+        )
+        
       if key not in self._collections:
-        vector_store = MilvusVectorStore(
-          collection_name=key,
-          dim=self.dim,
-          # uri="http://mediadb45.entermediadb.net:19530",
-          uri="./mil.db",
-          overwrite=True,
+        client = QdrantClient(host="localhost", port=6333)
+        vector_store = QdrantVectorStore(
+          client=client,
+          collection_name=collection_name,
         )
         
         index = VectorStoreIndex.from_vector_store(vector_store)

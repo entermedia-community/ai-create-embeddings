@@ -4,6 +4,6 @@ llama-cpp-python
 llama-index
 llama-index-embeddings-huggingface
 llama-index-llms-openai-like
-llama-index-vector-stores-milvus
-pymilvus
+llama-index-vector-stores-qdrant
+qdrant_client
 uvicorn

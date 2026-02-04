@@ -32,7 +32,7 @@ llama_debug = LlamaDebugHandler(print_trace_on_end=True)
 callback_manager = CallbackManager([llama_debug])
 
 Settings.llm = OpenAILike(
-    api_base="https://llm.emediaworkspace.com/",
+    api_base="http://localhost:7600/",
     is_chat_model=True,
     is_function_calling_model=True
 )
@@ -128,7 +128,7 @@ async def embed_document(
     return JSONResponse(
         status_code=status.HTTP_200_OK,
         content={
-            "message": f"Document with ID {doc_id} embedded successfully.",
+            "message": f"Document {doc_id} embedded successfully.",
             "processed": list(processed),
             "skipped": list(skipped),
             "failed": list(failed),
