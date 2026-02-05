@@ -29,18 +29,17 @@ class IndexRegistry:
   def get(self, collection_name: str) -> VectorStoreIndex:
     key = collection_name
 
-    with self._lock:
-      if not client.collection_exists(collection_name=collection_name):
-        client.create_collection(
-          collection_name=collection_name,
-          vectors_config=VectorParams(
-            size=self.dim,
-            distance=Distance.COSINE
-          )
-        )
-        
+    with self._lock:        
       if key not in self._collections:
         client = QdrantClient(host="localhost", port=6333)
+        if not client.collection_exists(collection_name=collection_name):
+          client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+              size=self.dim,
+              distance=Distance.COSINE
+            )
+          )
         vector_store = QdrantVectorStore(
           client=client,
           collection_name=collection_name,
