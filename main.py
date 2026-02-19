@@ -21,6 +21,9 @@ from llama_index.core.vector_stores import (
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+from qdrant_client.http.models import Filter, FieldCondition, MatchAny
+
+
 from utils.document_maker import DocumentMaker
 
 from db_manager import IndexRegistry
@@ -87,7 +90,6 @@ async def embed_document(
     processed = set()
     failed = set()
     skipped = set()
-    node_ids = {}
     print("Adding pages for document ID:", doc_id)
     for data in all_data.pages:
         page_id = data.page_id
@@ -96,6 +98,8 @@ async def embed_document(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={"error": "Document ID is required."}
             )
+
+        index.delete(doc_id=page_id, delete_from_docstore=True)
         
         page_label = data.page_label
 
@@ -117,13 +121,7 @@ async def embed_document(
             document = doc_maker.create_document(text)
             index.insert(document)
             processed.add(page_id)
-            node_id = getattr(document, "id_", None)
-            if node_id is None and hasattr(document, "get_doc_id"):
-                node_id = document.get_doc_id()
-            if node_id is None and hasattr(document, "doc_id"):
-                node_id = document.doc_id
-            if node_id is not None:
-                node_ids[page_id] = node_id
+
             print("Added page ID:", page_id)
         except Exception as e:
             failed.add(page_id)
@@ -135,7 +133,6 @@ async def embed_document(
             "processed": list(processed),
             "skipped": list(skipped),
             "failed": list(failed),
-            "node_ids": node_ids,
         }
     )
     
@@ -151,21 +148,19 @@ async def query_docs(
     
     index = registry.get(collection_name=x_customerkey)
 
-    try:
-        if(len(data.parent_ids) == 1):
-            operator = FilterOperator.EQ
-            value = data.parent_ids[0]
-        else:
-            operator = FilterOperator.IN
-            value = data.parent_ids
-        
-        filters = MetadataFilters(
-            filters=[
-                MetadataFilter(key="parent_id", operator=operator, value=value)
+    try:        
+        filters = Filter(
+            must=[
+                FieldCondition(
+                    key="parent_id",
+                    match=MatchAny(
+                        any=data.parent_ids
+                    )
+                )
             ]
         )
 
-        query_engine = index.as_query_engine(filters=filters)
+        query_engine = index.as_query_engine(vector_store_kwargs={"qdrant_filters": filters})
         
         response = query_engine.query(data.query)
         
@@ -277,3 +272,20 @@ async def create_section_contents(
             content={"error": str(e)}
         )
     
+class DeleteDocsRequest(BaseModel):
+    node_ids: List[str] = Field(..., description="List of node IDs to delete.")
+    
+@app.post("/delete_document")
+async def delete_document(
+    data: DeleteDocsRequest,
+    x_customerkey: Optional[str] = Depends(get_collection_name)
+):
+    index = registry.get(collection_name=x_customerkey)
+
+    for node_id in data.node_ids:
+        index.delete(doc_id=node_id, delete_from_docstore=True)
+    
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content={"message": "Nodes deleted successfully."}
+    )
