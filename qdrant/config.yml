@@ -1,0 +1,3 @@
+cluster:
+  # Use `enabled: true` to run Qdrant in distributed deployment mode
+  enabled: true

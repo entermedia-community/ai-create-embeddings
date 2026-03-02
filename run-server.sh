@@ -1,1 +1,1 @@
-uvicorn main:app --host 0.0.0.0 --port 9600 >> server.log 2>&1 &
+uvicorn main:app --host 0.0.0.0 --port 9600 > /dev/null 2>&1 &
