@@ -11,11 +11,6 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from llama_index.core import Settings
 from llama_index.core.callbacks import CallbackManager, LlamaDebugHandler
-from llama_index.core.vector_stores import (
-    MetadataFilter,
-    MetadataFilters,
-    FilterOperator,
-)
 
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -42,6 +37,11 @@ llm = OpenAILike(
     is_chat_model=True,
     is_function_calling_model=True
 )
+
+class Outlines(BaseModel):
+    outline: List[str] = Field(..., description="List of outline sections extracted from the document.")
+
+s_llm = llm.as_structured_llm(output_cls=Outlines)
 
 Settings.llm = llm
 
@@ -189,11 +189,6 @@ async def query_docs(
         )
 
 
-
-class Outlines(BaseModel):
-    outline: List[str] = Field(..., description="List of outline sections extracted from the document.")
-
-
 @app.post("/create_outline")
 async def create_outline(
     data: QueryDocsRequest,
@@ -213,9 +208,7 @@ async def create_outline(
             ]
         )
 
-        sllm = llm.as_structured_llm(output_cls=Outlines)
-
-        query_engine = index.as_query_engine(vector_store_kwargs={"qdrant_filters": filters}, llm=sllm)
+        query_engine = index.as_query_engine(vector_store_kwargs={"qdrant_filters": filters}, llm=s_llm)
 
         response = query_engine.query(data.query)
 
