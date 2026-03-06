@@ -41,9 +41,11 @@ s_llm = llm.as_structured_llm(output_cls=Outlines)
 Settings.llm = llm
 
 Settings.embed_model = HuggingFaceEmbedding(
-  model_name="intfloat/multilingual-e5-large",
-  device="cuda"
+  model_name="BAAI/bge-m3"
 )
+
+Settings.context_window = 7168
+Settings.num_output = 3072
 
 class IndexRegistry:
   def __init__(
@@ -248,8 +250,8 @@ async def create_outline(
             ]
         )
 
-        query_engine = index.as_query_engine(vector_store_kwargs={"qdrant_filters": filters}, llm=s_llm)
-
+        query_engine = index.as_query_engine(vector_store_kwargs={"qdrant_filters": filters})
+        
         response = query_engine.query(data.query)
 
         return JSONResponse(
