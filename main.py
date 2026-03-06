@@ -1,16 +1,17 @@
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from typing import Optional, List
 import logging
 import os
-
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
+from threading import Lock
+from cachetools import LRUCache
 
 from typing import List, Optional
 from fastapi import FastAPI, status, Header, Depends
 from fastapi.responses import JSONResponse
 
 from pydantic import BaseModel, Field
-from llama_index.core import Settings
-from llama_index.core.callbacks import CallbackManager, LlamaDebugHandler
+from llama_index.core import Settings, VectorStoreIndex
 
 from llama_index.llms.openai_like import OpenAILike
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
@@ -18,18 +19,12 @@ from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from qdrant_client.http.models import Filter, FieldCondition, MatchAny
 
 
+from llama_index.vector_stores.qdrant import QdrantVectorStore
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams
+
 from utils.document_maker import DocumentMaker
-
-from db_manager import IndexRegistry
-
-app = FastAPI()
-
-logger = logging.getLogger(__name__)
-
-registry = IndexRegistry(dim=1024)
-
-llama_debug = LlamaDebugHandler(print_trace_on_end=True)
-callback_manager = CallbackManager([llama_debug])
 
 llm = OpenAILike(
     api_base="http://0.0.0.0:7600/", # Server uses local LLM
@@ -49,6 +44,50 @@ Settings.embed_model = HuggingFaceEmbedding(
   model_name="intfloat/multilingual-e5-large",
   device="cuda"
 )
+
+class IndexRegistry:
+  def __init__(
+    self,
+    dim: int = 1024,
+    max_cache_size: int = 5
+  ):
+    self.dim = dim
+    self._lock = Lock()
+
+    self._collections = LRUCache(maxsize=max_cache_size)
+
+  def get(self, collection_name: str) -> VectorStoreIndex:
+    key = collection_name
+
+    with self._lock:        
+      if key not in self._collections:
+        client = QdrantClient(host="localhost", port=6333)
+        if not client.collection_exists(collection_name=collection_name):
+          client.create_collection(
+            collection_name=collection_name,
+            vectors_config=VectorParams(
+              size=self.dim,
+              distance=Distance.COSINE
+            )
+          )
+        vector_store = QdrantVectorStore(
+          client=client,
+          collection_name=collection_name,
+        )
+        
+        index = VectorStoreIndex.from_vector_store(vector_store)
+
+        self._collections[key] = index
+
+      return self._collections[key]
+
+app = FastAPI()
+
+logger = logging.getLogger(__name__)
+
+registry = IndexRegistry(dim=1024)
+
+
 
 def get_collection_name(x_customerkey: Optional[str] = Header(None)):
     if not x_customerkey.isalnum():
