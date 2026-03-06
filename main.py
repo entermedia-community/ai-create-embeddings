@@ -1,8 +1,8 @@
+import os
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from typing import Optional, List
 import logging
-import os
 from threading import Lock
 from cachetools import LRUCache
 
