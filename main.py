@@ -67,7 +67,7 @@ def ensure_collection(name: str):
             vectors_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
         )
 
-@lru_cache(maxsize=32)
+# @lru_cache(maxsize=32)
 def get_vector_store(collection: str) -> QdrantVectorStore:
     ensure_collection(collection)
     return QdrantVectorStore(client=client, collection_name=collection)
@@ -92,8 +92,6 @@ async def run_blocking(func, *args, timeout: int = REQUEST_TIMEOUT_SECONDS, **kw
     """Run sync heavy tasks in a threadpool to keep the event loop responsive."""
     bound_call = partial(func, *args, **kwargs)
     return await asyncio.wait_for(run_in_threadpool(bound_call), timeout=timeout)
-
-
 
 def get_collection_name(x_customerkey: Optional[str] = Header(None)):
     if not x_customerkey or not x_customerkey.isalnum():
