@@ -73,7 +73,7 @@ def get_vector_store(collection: str) -> QdrantVectorStore:
     return QdrantVectorStore(
         client=client,
         collection_name=collection,
-        dense_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
+        dense_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
         dense_vector_name=""
     )
 
