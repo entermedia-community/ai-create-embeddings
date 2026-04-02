@@ -70,7 +70,12 @@ def ensure_collection(name: str):
 # @lru_cache(maxsize=32)
 def get_vector_store(collection: str) -> QdrantVectorStore:
     ensure_collection(collection)
-    return QdrantVectorStore(client=client, collection_name=collection)
+    return QdrantVectorStore(
+        client=client,
+        collection_name=collection,
+        dense_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE)
+        dense_vector_name=""
+    )
 
 
 
