@@ -24,7 +24,7 @@ from qdrant_client.http.models import Filter, FieldCondition, MatchAny
 
 from llama_index.vector_stores.qdrant import QdrantVectorStore
 
-from qdrant_client import QdrantClient
+import qdrant_client
 from qdrant_client.models import Distance, VectorParams
 
 from utils.document_maker import DocumentMaker
@@ -50,12 +50,20 @@ Settings.embed_model = HuggingFaceEmbedding(
   model_name="BAAI/bge-m3"
 )
 
-client = QdrantClient(
+client = qdrant_client.QdrantClient(
     host="localhost",
     port=6333,
     # host="74.48.140.178", 
     # port=27054
 )
+
+aclient = qdrant_client.AsyncQdrantClient(
+    host="localhost",
+    port=6333,
+    # host="74.48.140.178", 
+    # port=27054
+)
+
 
 VECTOR_SIZE = 1024
 
@@ -72,9 +80,9 @@ def get_vector_store(collection: str) -> QdrantVectorStore:
     ensure_collection(collection)
     return QdrantVectorStore(
         client=client,
+        aclient=aclient,
         collection_name=collection,
-        dense_config=VectorParams(size=VECTOR_SIZE, distance=Distance.COSINE),
-        dense_vector_name=""
+        prefer_grpc=True,
     )
 
 
@@ -127,7 +135,7 @@ async def embed_document(
     async with heavy_request_semaphore:
         
         vector_store = await run_blocking(get_vector_store, x_customerkey, timeout=INDEX_TIMEOUT_SECONDS)
-        index = VectorStoreIndex.from_vector_store(vector_store)
+        index = VectorStoreIndex.from_vector_store(vector_store, use_async=True)
 
         doc_id = all_data.doc_id
         file_name = all_data.file_name
@@ -214,7 +222,7 @@ async def query_docs(
     async with heavy_request_semaphore:
         
         vector_store = await run_blocking(get_vector_store, x_customerkey, timeout=INDEX_TIMEOUT_SECONDS)
-        index = VectorStoreIndex.from_vector_store(vector_store)
+        index = VectorStoreIndex.from_vector_store(vector_store, use_async=True)
 
         try:
             filters = Filter(
@@ -231,9 +239,10 @@ async def query_docs(
             query_engine = await run_blocking(
                 index.as_query_engine,
                 vector_store_kwargs={"qdrant_filters": filters},
+                use_async=True,
                 timeout=INDEX_TIMEOUT_SECONDS,
             )
-            response = await run_blocking(query_engine.query, data.query)
+            response = await asyncio.wait_for(query_engine.aquery(data.query), timeout=REQUEST_TIMEOUT_SECONDS)
 
             return JSONResponse(
                 status_code=status.HTTP_200_OK,
@@ -292,7 +301,7 @@ async def create_outline(
     async with heavy_request_semaphore:
         
         vector_store = await run_blocking(get_vector_store, x_customerkey, timeout=INDEX_TIMEOUT_SECONDS)
-        index = VectorStoreIndex.from_vector_store(vector_store)
+        index = VectorStoreIndex.from_vector_store(vector_store, use_async=True)
 
         try:
             filters = Filter(
@@ -309,10 +318,11 @@ async def create_outline(
             retriever = await run_blocking(
                 index.as_retriever,
                 vector_store_kwargs={"qdrant_filters": filters},
+                use_async=True,
                 timeout=INDEX_TIMEOUT_SECONDS,
             )
 
-            nodes = await run_blocking(retriever.retrieve, data.query)
+            nodes = await asyncio.wait_for(retriever.aretrieve(data.query), timeout=REQUEST_TIMEOUT_SECONDS)
             context = ""
             for node in nodes:
                 context += f"Page ID: {node.node.metadata.get('id', 'N/A')}, Page Label: {node.node.metadata.get('page_label', 'N/A')}\n"
